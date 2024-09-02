@@ -1124,3 +1124,4 @@ variable "assign_external_ip" {
   type        = bool
   default     = true
 }
+

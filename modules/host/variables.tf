@@ -144,3 +144,9 @@ variable "keep_disk_size" {
   default     = false
   description = "Whether to keep OS disks of nodes the same size when upgrading a node"
 }
+
+variable "assign_external_ip" {
+  description = "Whether to assign an external IP to the server"
+  type        = bool
+  default     = true
+}
