@@ -39,7 +39,7 @@ resource "hcloud_server" "server" {
   }
 
   network {
-    network_id = var.ipv4_subnet_id
+    network_id = split("-", var.ipv4_subnet_id)[0]
     ip         = var.private_ipv4
   }
 
