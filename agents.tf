@@ -34,6 +34,9 @@ module "agents" {
 
   labels = merge(local.labels, local.labels_agent_node)
 
+  # Pass the assign_external_ip value
+  assign_external_ip = local.agent_assign_external_ip[each.key]
+
   automatically_upgrade_os = var.automatically_upgrade_os
 
   depends_on = [
@@ -43,6 +46,10 @@ module "agents" {
 }
 
 locals {
+  agent_assign_external_ip = { 
+    for k, v in local.agent_nodes : k => v.assign_external_ip
+  }
+
   k3s-agent-config = { for k, v in local.agent_nodes : k => merge(
     {
       node-name     = module.agents[k].name
