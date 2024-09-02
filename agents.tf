@@ -35,7 +35,7 @@ module "agents" {
   labels = merge(local.labels, local.labels_agent_node)
 
   # Pass the assign_external_ip value
-  assign_external_ip = local.agent_assign_external_ip[each.key]
+  assign_external_ip = each.value.assign_external_ip
 
   automatically_upgrade_os = var.automatically_upgrade_os
 
