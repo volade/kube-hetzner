@@ -33,6 +33,16 @@ resource "hcloud_server" "server" {
 
   labels = var.labels
 
+  public_net {
+    ipv4_enabled = var.assign_external_ip
+    ipv6_enabled = var.assign_external_ip
+  }
+
+  network {
+    network_id = var.ipv4_subnet_id
+    ip         = var.private_ipv4
+  }
+
   # Prevent destroying the whole cluster if the user changes
   # any of the attributes that force to recreate the servers.
   lifecycle {

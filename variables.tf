@@ -1118,3 +1118,9 @@ variable "keep_disk_cp" {
   default     = false
   description = "Whether to keep OS disks of nodes the same size when upgrading a control-plane node"
 }
+
+variable "assign_external_ip" {
+  description = "Whether to assign an external IP to the server"
+  type        = bool
+  default     = true
+}
