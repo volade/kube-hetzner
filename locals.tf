@@ -171,7 +171,8 @@ locals {
         index : node_index
         selinux : nodepool_obj.selinux
         placement_group_compat_idx : nodepool_obj.placement_group_compat_idx,
-        placement_group : nodepool_obj.placement_group
+        placement_group : nodepool_obj.placement_group,
+        assign_external_ip : lookup(nodepool_obj, "assign_external_ip", true)
       }
     }
   ]...)
@@ -196,6 +197,7 @@ locals {
           selinux : nodepool_obj.selinux,
           placement_group_compat_idx : nodepool_obj.placement_group_compat_idx,
           placement_group : nodepool_obj.placement_group,
+          assign_external_ip : lookup(nodepool_obj, "assign_external_ip", true)
           index : floor(tonumber(node_key)),
         },
         { for key, value in node_obj : key => value if value != null },
