@@ -35,7 +35,7 @@ resource "hcloud_server" "server" {
 
   public_net {
     ipv4_enabled = var.assign_external_ip
-    ipv6_enabled = var.assign_external_ip
+    ipv6_enabled = false
   }
 
   network {
