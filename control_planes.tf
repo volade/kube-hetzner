@@ -36,6 +36,9 @@ module "control_planes" {
 
   labels = merge(local.labels, local.labels_control_plane_node)
 
+  # Pass the assign_external_ip value
+  assign_external_ip = local.control_plane_assign_external_ip[each.key]
+
   automatically_upgrade_os = var.automatically_upgrade_os
 
   depends_on = [
@@ -83,6 +86,10 @@ resource "hcloud_load_balancer_service" "control_plane" {
 }
 
 locals {
+  control_plane_assign_external_ip = { 
+    for k, v in local.control_plane_nodes : k => v.assign_external_ip
+  }
+
   k3s-config = { for k, v in local.control_plane_nodes : k => merge(
     {
       node-name = module.control_planes[k].name

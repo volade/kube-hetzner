@@ -33,6 +33,7 @@ resource "hcloud_server" "server" {
 
   labels = var.labels
 
+
   public_net {
     ipv4_enabled = var.assign_external_ip
     ipv6_enabled = false
@@ -73,6 +74,7 @@ resource "hcloud_server" "server" {
   # Wait for MicroOS to reboot and be ready.
   provisioner "local-exec" {
     command = <<-EOT
+      echo "Private IP is: ${var.private_ipv4}"
       until ssh ${local.ssh_args} -i /tmp/${random_string.identity_file.id} -o ConnectTimeout=2 -p ${var.ssh_port} root@${self.ipv4_address} true 2> /dev/null
       do
         echo "Waiting for MicroOS to become available..."

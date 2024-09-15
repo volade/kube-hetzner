@@ -147,7 +147,8 @@ locals {
         index : node_index
         selinux : nodepool_obj.selinux
         placement_group_compat_idx : nodepool_obj.placement_group_compat_idx,
-        placement_group : nodepool_obj.placement_group
+        placement_group : nodepool_obj.placement_group,
+        assign_external_ip : lookup(nodepool_obj,"assign_external_ip", false)
       }
     }
   ]...)
@@ -161,6 +162,7 @@ locals {
         server_type : nodepool_obj.server_type,
         longhorn_volume_size : coalesce(nodepool_obj.longhorn_volume_size, 0),
         floating_ip : lookup(nodepool_obj, "floating_ip", false),
+        floating_ip_id : nodepool_obj.floating_ip_id,
         location : nodepool_obj.location,
         labels : concat(local.default_agent_labels, nodepool_obj.swap_size != "" ? local.swap_node_label : [], nodepool_obj.labels),
         taints : concat(local.default_agent_taints, nodepool_obj.taints),
@@ -172,7 +174,7 @@ locals {
         selinux : nodepool_obj.selinux
         placement_group_compat_idx : nodepool_obj.placement_group_compat_idx,
         placement_group : nodepool_obj.placement_group,
-        assign_external_ip : lookup(nodepool_obj, "assign_external_ip", true)
+        assign_external_ip : lookup(nodepool_obj,"assign_external_ip", false)
       }
     }
   ]...)
@@ -187,6 +189,7 @@ locals {
           server_type : nodepool_obj.server_type,
           longhorn_volume_size : coalesce(nodepool_obj.longhorn_volume_size, 0),
           floating_ip : lookup(nodepool_obj, "floating_ip", false),
+          floating_ip_id : nodepool_obj.floating_ip_id,
           location : nodepool_obj.location,
           labels : concat(local.default_agent_labels, nodepool_obj.swap_size != "" ? local.swap_node_label : [], nodepool_obj.labels),
           taints : concat(local.default_agent_taints, nodepool_obj.taints),
@@ -197,7 +200,7 @@ locals {
           selinux : nodepool_obj.selinux,
           placement_group_compat_idx : nodepool_obj.placement_group_compat_idx,
           placement_group : nodepool_obj.placement_group,
-          assign_external_ip : lookup(nodepool_obj, "assign_external_ip", true)
+          assign_external_ip : lookup(nodepool_obj,"assign_external_ip", true),
           index : floor(tonumber(node_key)),
         },
         { for key, value in node_obj : key => value if value != null },

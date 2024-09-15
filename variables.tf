@@ -178,6 +178,7 @@ variable "control_plane_nodepools" {
     selinux                    = optional(bool, true)
     placement_group_compat_idx = optional(number, 0)
     placement_group            = optional(string, null)
+    assign_external_ip         = optional(bool)
   }))
   default = []
   validation {
@@ -200,6 +201,7 @@ variable "agent_nodepools" {
     location                   = string
     backups                    = optional(bool)
     floating_ip                = optional(bool)
+    floating_ip_id             = optional(number)
     labels                     = list(string)
     taints                     = list(string)
     longhorn_volume_size       = optional(number)
@@ -209,12 +211,14 @@ variable "agent_nodepools" {
     selinux                    = optional(bool, true)
     placement_group_compat_idx = optional(number, 0)
     placement_group            = optional(string, null)
+    assign_external_ip         = optional(bool)
     count                      = optional(number, null)
     nodes = optional(map(object({
       server_type                = optional(string)
       location                   = optional(string)
       backups                    = optional(bool)
       floating_ip                = optional(bool)
+      floating_ip_id             = optional(number)
       labels                     = optional(list(string))
       taints                     = optional(list(string))
       longhorn_volume_size       = optional(number)
@@ -1119,9 +1123,4 @@ variable "keep_disk_cp" {
   description = "Whether to keep OS disks of nodes the same size when upgrading a control-plane node"
 }
 
-variable "assign_external_ip" {
-  description = "Whether to assign an external IP to the server"
-  type        = bool
-  default     = true
-}
 

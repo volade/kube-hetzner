@@ -35,7 +35,7 @@ module "agents" {
   labels = merge(local.labels, local.labels_agent_node)
 
   # Pass the assign_external_ip value
-  assign_external_ip = each.value.assign_external_ip
+  assign_external_ip = local.agent_assign_external_ip[each.key]
 
   automatically_upgrade_os = var.automatically_upgrade_os
 
@@ -43,11 +43,17 @@ module "agents" {
     hcloud_network_subnet.agent,
     hcloud_placement_group.agent
   ]
+
 }
 
 locals {
   agent_assign_external_ip = { 
     for k, v in local.agent_nodes : k => v.assign_external_ip
+  }
+
+  connection_host = {
+    for key, agent in module.agents :
+    key => coalesce(agent.ipv4_address, agent.private_ipv4_address)
   }
 
   k3s-agent-config = { for k, v in local.agent_nodes : k => merge(
@@ -65,6 +71,7 @@ locals {
     (v.selinux == true ? { selinux = true } : {})
   ) }
 }
+
 
 resource "null_resource" "agent_config" {
   for_each = local.agent_nodes
@@ -183,10 +190,7 @@ resource "null_resource" "configure_longhorn_volume" {
 }
 
 resource "hcloud_floating_ip" "agents" {
-  for_each = {
-    for k, v in local.agent_nodes :
-    k => v if coalesce(lookup(v, "floating_ip"), false) && !contains(keys(v), "floating_ip_id")
-  }
+  for_each = { for k, v in local.agent_nodes : k => v if coalesce(lookup(v, "floating_ip"), false) }
 
   type              = "ipv4"
   labels            = local.labels
@@ -197,23 +201,16 @@ resource "hcloud_floating_ip" "agents" {
 data "hcloud_floating_ip" "existing" {
   for_each = {
     for k, v in local.agent_nodes :
-    k => v if contains(keys(v), "floating_ip_id")
+    k => v if lookup(v, "floating_ip_id", null) != null
   }
 
   id = each.value.floating_ip_id
 }
 
-
 resource "hcloud_floating_ip_assignment" "agents" {
-  for_each = {
-    for k, v in local.agent_nodes :
-    k => v if coalesce(lookup(v, "floating_ip"), false) || contains(keys(v), "floating_ip_id")
-  }
+  for_each = { for k, v in local.agent_nodes : k => v if coalesce(lookup(v, "floating_ip"), false) || lookup(v,"floating_ip_id",null) != null}
 
-  floating_ip_id = coalesce(
-    try(hcloud_floating_ip.agents[each.key].id, null),
-    try(data.hcloud_floating_ip.existing[each.key].id, null)
-  )
+  floating_ip_id = coalesce(try(hcloud_floating_ip.agents[each.key].id,null),data.hcloud_floating_ip.existing[each.key].id)
   server_id      = module.agents[each.key].id
 
   depends_on = [
@@ -222,12 +219,7 @@ resource "hcloud_floating_ip_assignment" "agents" {
 }
 
 resource "null_resource" "configure_floating_ip" {
-  for_each = { for k, v in local.agent_nodes : k => v if coalesce(lookup(v, "floating_ip"), false) }
-
-  triggers = {
-    agent_id       = module.agents[each.key].id
-    floating_ip_id = hcloud_floating_ip.agents[each.key].id
-  }
+  for_each = { for k, v in local.agent_nodes : k => v if coalesce(lookup(v, "floating_ip"), false) || lookup(v,"floating_ip_id",null) != null}
 
   provisioner "remote-exec" {
     inline = [
@@ -237,14 +229,26 @@ resource "null_resource" "configure_floating_ip" {
       #    special private IP address 172.31.1.1 is the default
       #    gateway for the public network)
       # The configuration is stored in file /etc/NetworkManager/system-connections/cloud-init-eth0.nmconnection
-      <<-EOT
-      NM_CONNECTION=$(nmcli -g GENERAL.CONNECTION device show eth0)
-      nmcli connection modify "$NM_CONNECTION" \
-        ipv4.method manual \
-        ipv4.addresses ${hcloud_floating_ip.agents[each.key].ip_address}/32,${module.agents[each.key].ipv4_address}/32 gw4 172.31.1.1 \
-        ipv4.route-metric 100 \
-      && nmcli connection up "$NM_CONNECTION"
-      EOT
+
+    # Determine the floating IP address to use
+    # FLOATING_IP=${try(try(hcloud_floating_ip.agents[each.key].ip_address,data.hcloud_floating_ip.existing[each.key].ip_address),null)}/32
+    # SERVER_IP=${module.agents[each.key].ipv4_address}/32
+
+    # Print the determined floating IP address for debugging
+    # echo "Using floating IP: $FLOATING_IP"
+
+    # echo "Modifying the connection started using $FLOATING_IP and $SERVER_IP..."
+
+    # echo "ipv4.addresses $FLOATING_IP,$SERVER_IP gw4 172.31.1.1"
+
+     <<-EOT
+    NM_CONNECTION=$(nmcli -g GENERAL.CONNECTION device show eth0)
+    nmcli connection modify "$NM_CONNECTION" \
+      ipv4.method manual \
+      ipv4.addresses ${data.hcloud_floating_ip.existing[each.key].ip_address}/32,${module.agents[each.key].ipv4_address}/32 gw4 172.31.1.1 \
+      ipv4.route-metric 100
+      nohup nmcli connection up "$NM_CONNECTION" &
+    EOT
     ]
   }
 
@@ -258,5 +262,30 @@ resource "null_resource" "configure_floating_ip" {
 
   depends_on = [
     hcloud_floating_ip_assignment.agents
+  ]
+}
+
+resource "null_resource" "apply_ip_configuration" {
+  for_each = { for k, v in local.agent_nodes : k => v if coalesce(lookup(v, "floating_ip"), false) || lookup(v,"floating_ip_id",null) != null}
+
+  provisioner "remote-exec" {
+    inline = [
+    <<-EOT
+    NM_CONNECTION=$(nmcli -g GENERAL.CONNECTION device show eth0)
+    nmcli connection up "$NM_CONNECTION"
+    EOT
+    ]
+  }
+
+  connection {
+    user           = "root"
+    private_key    = var.ssh_private_key
+    agent_identity = local.ssh_agent_identity
+    host           = module.agents[each.key].ipv4_address
+    port           = var.ssh_port
+  }
+
+  depends_on = [
+    null_resource.configure_floating_ip
   ]
 }

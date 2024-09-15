@@ -146,7 +146,7 @@ variable "keep_disk_size" {
 }
 
 variable "assign_external_ip" {
-  description = "Whether to assign an external IP to the server"
+  description = "Boolean to determine whether an external IP should be assigned"
   type        = bool
-  default     = true
+  default     = false
 }
